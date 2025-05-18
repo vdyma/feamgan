@@ -1,12 +1,12 @@
 {
   "executeExperiments": 1,
-  "modelLogging":{
-    "usewandb": 1,
-    "wandb":{
+  "modelLogging": {
+    "usewandb": 0,
+    "wandb": {
       "apiKey": "Your Weights&Biases API Key",
       "project": "Your Weights&Biases Project",
       "entity": "Your Weights&Biases Entity (Profile)",
-      "forceLogin": 1 
-  }
+      "forceLogin": 1
+    }
   }
 }
