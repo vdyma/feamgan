@@ -1,4 +1,3 @@
-
 class TSingleton(type):
     """
     TSingleton is a "template" used to realize a singleton class, witch prevents multi initialization of the class.
@@ -20,4 +19,3 @@ class TSingleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(TSingleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
-

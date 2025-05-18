@@ -1,14 +1,16 @@
 import datetime
-import os
 import glob
-import numpy as np
+import os
 
+import numpy as np
 from termcolor import colored
+
 
 class LogLevel:
     """
     A "enum" class for the loglevel flags.
     """
+
     DEBUG = 1
     INFO = 2
     WARNING = 4
@@ -18,8 +20,24 @@ class LogLevel:
     INFER = 64
     ALL = 127
 
-    Color = {1: "blue", 2: "white", 4: "magenta", 8: "red", 16: "yellow", 32: "green", 64: "cyan"}
-    String = {1: "DEBUG", 2: "INFO", 4: "WARNING", 8: "ERROR", 16: "TRAIN", 32: "VAL", 64: "INFER"}
+    Color = {
+        1: "blue",
+        2: "white",
+        4: "magenta",
+        8: "red",
+        16: "yellow",
+        32: "green",
+        64: "cyan",
+    }
+    String = {
+        1: "DEBUG",
+        2: "INFO",
+        4: "WARNING",
+        8: "ERROR",
+        16: "TRAIN",
+        32: "VAL",
+        64: "INFER",
+    }
 
 
 class Logger:
@@ -39,7 +57,15 @@ class Logger:
         __log_html:      (Boolean) If true, logs will be written in a html file.
     """
 
-    def __init__(self, name, folder="", append=False, log_level=LogLevel.ALL, print_level=LogLevel.ALL, log_html=False):
+    def __init__(
+        self,
+        name,
+        folder="",
+        append=False,
+        log_level=LogLevel.ALL,
+        print_level=LogLevel.ALL,
+        log_html=False,
+    ):
         """
         Constructor for a Logger.
         :param name: (String) The name of the logger. Name of the subdirectory containing the logfiles.
@@ -112,7 +138,6 @@ class Logger:
         """
         self.__log_html = log_html
 
-
     def setPrintLevel(self, level):
         """
         Setter for the print level.
@@ -175,7 +200,7 @@ class Logger:
         :param message: (String) The message.
         :param sender: (String) The sender of the message. [None] by default.
         """
-        if ((LogLevel.ERROR & self.__log_level)) and self.__log_html > 0:
+        if (LogLevel.ERROR & self.__log_level) and self.__log_html > 0:
             self.__log(LogLevel.ERROR, message, sender)
 
         if (LogLevel.ERROR & self.__log_level) > 0:
@@ -187,7 +212,7 @@ class Logger:
         :param message: (String) The message.
         :param sender: (String) The sender of the message. None by default.
         """
-        if ((LogLevel.TRAIN & self.__log_level)) and self.__log_html > 0:
+        if (LogLevel.TRAIN & self.__log_level) and self.__log_html > 0:
             self.__log(LogLevel.TRAIN, message, sender)
 
         if (LogLevel.TRAIN & self.__log_level) > 0:
@@ -199,7 +224,7 @@ class Logger:
         :param message: (String) The message.
         :param sender: (String) The sender of the message. None by default.
         """
-        if ((LogLevel.VAL & self.__log_level)) and self.__log_html > 0:
+        if (LogLevel.VAL & self.__log_level) and self.__log_html > 0:
             self.__log(LogLevel.VAL, message, sender)
 
         if (LogLevel.VAL & self.__log_level) > 0:
@@ -211,7 +236,7 @@ class Logger:
         :param message: (String) The message.
         :param sender: (String) The sender of the message. None by default.
         """
-        if ((LogLevel.INFER & self.__log_level)) and self.__log_html > 0:
+        if (LogLevel.INFER & self.__log_level) and self.__log_html > 0:
             self.__log(LogLevel.INFER, message, sender)
 
         if (LogLevel.INFER & self.__log_level) > 0:
@@ -224,8 +249,11 @@ class Logger:
         :param dataset: (tf.data.Dataset) The tensorflow dataset.
         :param sender: (String) The sender of the message. None by default.
         """
-        message = "\n-----------------------------------Tensorflow Dataset Information for Subset: " + subset_type \
-                  + "-----------------------------------\n"
+        message = (
+            "\n-----------------------------------Tensorflow Dataset Information for Subset: "
+            + subset_type
+            + "-----------------------------------\n"
+        )
         message += "Data:\n"
         message += str(dataset)
 
@@ -234,7 +262,6 @@ class Logger:
 
         if (LogLevel.INFO & self.__log_level) > 0:
             self.__print(LogLevel.INFO, message, sender)
-
 
     def npDatasetInfo(self, dataset, sender=None):
         """
@@ -267,10 +294,20 @@ class Logger:
         if sender is None:
             sender = "UNDEFINED"
 
-        output = "<font style='color: " + LogLevel.Color[
-            level] + "; font-family: courier new; font-weight: bold'>" + datetime.datetime.now().strftime(
-            "%Y-%m-%d_%H:%M:%S") + ": " + LogLevel.String[
-                     level] + " from " + sender + ": '" + message + "'" + "</font><br>"
+        output = (
+            "<font style='color: "
+            + LogLevel.Color[level]
+            + "; font-family: courier new; font-weight: bold'>"
+            + datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+            + ": "
+            + LogLevel.String[level]
+            + " from "
+            + sender
+            + ": '"
+            + message
+            + "'"
+            + "</font><br>"
+        )
 
         self.__index_file.write(output + "<br>")
 
@@ -284,5 +321,18 @@ class Logger:
         if sender is None:
             sender = "UNDEFINED"
 
-        print(colored(self.__name + ": " + datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + ": " + LogLevel.String[
-            level] + " from " + sender + ": '" + message + "'", LogLevel.Color[level]))
+        print(
+            colored(
+                self.__name
+                + ": "
+                + datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+                + ": "
+                + LogLevel.String[level]
+                + " from "
+                + sender
+                + ": '"
+                + message
+                + "'",
+                LogLevel.Color[level],
+            )
+        )

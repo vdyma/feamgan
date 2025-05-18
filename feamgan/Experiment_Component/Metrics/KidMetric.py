@@ -1,31 +1,39 @@
-import torch
 import os
-import numpy as np
 
-from feamgan.utils.distUtils import distAllGatherTensor, isMaster
+import numpy as np
+import torch
+
 from feamgan.Experiment_Component.Metrics.BaseIDMetric import BaseIDMetric
+from feamgan.utils.distUtils import distAllGatherTensor, isMaster
+
 
 class KidMetric(BaseIDMetric):
-    def __init__(self, is_video, model_dir, dataset_name, dis_model_name="inception_v3"):
-        super(KidMetric, self).__init__(is_video, model_dir, dataset_name, dis_model_name)
+    def __init__(
+        self, is_video, model_dir, dataset_name, dis_model_name="inception_v3"
+    ):
+        super(KidMetric, self).__init__(
+            is_video, model_dir, dataset_name, dis_model_name
+        )
         self.save_path = f"{model_dir}/kid_real_act"
 
     @torch.no_grad()
-    def reduceBatches(self, mode, save_real_prefix=None): 
+    def reduceBatches(self, mode, save_real_prefix=None):
         meter_key = f"{save_real_prefix}_{mode}"
         path = f"{self.save_path}/{save_real_prefix}_{mode}_{self.file_name}"
         if meter_key in self.meters:
             if save_real_prefix and os.path.exists(path) and (mode != "train"):
-                print('Load KID activations from {}'.format(path))
+                print("Load KID activations from {}".format(path))
                 npz_file = np.load(path)
-                real_activations = npz_file['real_activations']
+                real_activations = npz_file["real_activations"]
             else:
                 if self.meters[meter_key]["real"]:
                     real_activations = self.meters[meter_key]["real"]
                     real_activations = torch.cat(real_activations)
                     real_activations = distAllGatherTensor(real_activations)
                     if isMaster():
-                        real_activations = torch.cat(real_activations).cpu().data.numpy()
+                        real_activations = (
+                            torch.cat(real_activations).cpu().data.numpy()
+                        )
                     if save_real_prefix:
                         os.makedirs(os.path.dirname(path), exist_ok=True)
                         if isMaster():
@@ -40,23 +48,33 @@ class KidMetric(BaseIDMetric):
                 kid = None
                 if isMaster():
                     fake_activations = torch.cat(fake_activations).cpu().data.numpy()
-                    mmd, mmd_vars = self._polynomial_mmd_averages(fake_activations, real_activations)
+                    mmd, mmd_vars = self._polynomial_mmd_averages(
+                        fake_activations, real_activations
+                    )
                     kid = mmd.mean()
             else:
                 return None
-                
+
             self.meters[meter_key]["real"] = []
             self.meters[meter_key]["fake"] = []
             return kid
-        else: 
+        else:
             return None
 
-    def _polynomial_mmd_averages(self, codes_g, codes_r, n_subsets=1, subset_size=None,
-                            ret_var=True, device='cpu', **kernel_args):
+    def _polynomial_mmd_averages(
+        self,
+        codes_g,
+        codes_r,
+        n_subsets=1,
+        subset_size=None,
+        ret_var=True,
+        device="cpu",
+        **kernel_args,
+    ):
         """
         Computes MMD between two sets of features using polynomial kernels. It
         performs a number of repetitions of subset sampling without replacement.
- 
+
         :param codes_g (Tensor): Feature activations of generated images.
         :param codes_r (Tensor): Feature activations of real images.
         :param n_subsets (int): The number of subsets.
@@ -77,12 +95,17 @@ class KidMetric(BaseIDMetric):
 
         if subset_size is None:
             subset_size = min(len(codes_r), len(codes_r))
-            print("Subset size not provided, "
-                "setting it to the data size ({}).".format(subset_size))
+            print(
+                "Subset size not provided, setting it to the data size ({}).".format(
+                    subset_size
+                )
+            )
         if subset_size > len(codes_g) or subset_size > len(codes_r):
             subset_size = min(len(codes_r), len(codes_r))
-            print("Subset size is large than the actual data size, "
-                "setting it to the data size ({}).".format(subset_size))
+            print(
+                "Subset size is large than the actual data size, "
+                "setting it to the data size ({}).".format(subset_size)
+            )
 
         for i in range(n_subsets):
             g = codes_g[choice(len(codes_g), subset_size, replace=False)]
@@ -94,8 +117,7 @@ class KidMetric(BaseIDMetric):
                 mmds[i] = o
         return (mmds, mmd_vars) if ret_var else mmds
 
-
-    def _polynomial_kernel(self, X, Y=None, degree=3, gamma=None, coef0=1.):
+    def _polynomial_kernel(self, X, Y=None, degree=3, gamma=None, coef0=1.0):
         r"""Compute the polynomial kernel between X and Y"""
         if gamma is None:
             gamma = 1.0 / X.shape[1]
@@ -109,13 +131,13 @@ class KidMetric(BaseIDMetric):
         K = K**degree
         return K
 
-
-    def _polynomial_mmd(self, codes_g, codes_r, degree=3, gamma=None, coef0=1,
-                    ret_var=True):
+    def _polynomial_mmd(
+        self, codes_g, codes_r, degree=3, gamma=None, coef0=1, ret_var=True
+    ):
         """
         Computes MMD between two sets of features using polynomial kernels. It
         performs a number of repetitions of subset sampling without replacement.
-    
+
         :param codes_g (Tensor): Feature activations of generated images.
         :param codes_r (Tensor): Feature activations of real images.
         :param degree (int): The degree of the polynomial kernel.
@@ -141,9 +163,9 @@ class KidMetric(BaseIDMetric):
 
         return self._mmd2_and_variance(K_XX, K_XY, K_YY, ret_var=ret_var)
 
-
-    def _mmd2_and_variance(self, K_XX, K_XY, K_YY, unit_diagonal=False,
-                        mmd_est='unbiased', ret_var=True):
+    def _mmd2_and_variance(
+        self, K_XX, K_XY, K_YY, unit_diagonal=False, mmd_est="unbiased", ret_var=True
+    ):
         """
         Based on https://github.com/dougalsutherland/opt-mmd/blob/master/two_sample/mmd.py
         but changed to not compute the full kernel matrix at once
@@ -180,14 +202,16 @@ class KidMetric(BaseIDMetric):
         Kt_YY_sum = Kt_YY_sums.sum()
         K_XY_sum = K_XY_sums_0.sum()
 
-        if mmd_est == 'biased':
-            mmd2 = ((Kt_XX_sum + sum_diag_X) / (m * m)
-                    + (Kt_YY_sum + sum_diag_Y) / (m * m)
-                    - 2 * K_XY_sum / (m * m))
+        if mmd_est == "biased":
+            mmd2 = (
+                (Kt_XX_sum + sum_diag_X) / (m * m)
+                + (Kt_YY_sum + sum_diag_Y) / (m * m)
+                - 2 * K_XY_sum / (m * m)
+            )
         else:
-            assert mmd_est in {'unbiased', 'u-statistic'}
+            assert mmd_est in {"unbiased", "u-statistic"}
             mmd2 = (Kt_XX_sum + Kt_YY_sum) / (m * (m - 1))
-            if mmd_est == 'unbiased':
+            if mmd_est == "unbiased":
                 mmd2 -= 2 * K_XY_sum / (m * m)
             else:
                 mmd2 -= 2 * (K_XY_sum - torch.trace(K_XY)) / (m * (m - 1))
@@ -206,28 +230,36 @@ class KidMetric(BaseIDMetric):
         m2 = m - 2
 
         zeta1_est = (
-            1 / (m * m1 * m2) * (
-                self._sqn(Kt_XX_sums) - Kt_XX_2_sum + self._sqn(Kt_YY_sums) - Kt_YY_2_sum)
-            - 1 / (m * m1) ** 2 * (Kt_XX_sum ** 2 + Kt_YY_sum ** 2)
-            + 1 / (m * m * m1) * (
-                self._sqn(K_XY_sums_1) + self._sqn(K_XY_sums_0) - 2 * K_XY_2_sum)
-            - 2 / m ** 4 * K_XY_sum ** 2
+            1
+            / (m * m1 * m2)
+            * (
+                self._sqn(Kt_XX_sums)
+                - Kt_XX_2_sum
+                + self._sqn(Kt_YY_sums)
+                - Kt_YY_2_sum
+            )
+            - 1 / (m * m1) ** 2 * (Kt_XX_sum**2 + Kt_YY_sum**2)
+            + 1
+            / (m * m * m1)
+            * (self._sqn(K_XY_sums_1) + self._sqn(K_XY_sums_0) - 2 * K_XY_2_sum)
+            - 2 / m**4 * K_XY_sum**2
             - 2 / (m * m * m1) * (dot_XX_XY + dot_YY_YX)
-            + 2 / (m ** 3 * m1) * (Kt_XX_sum + Kt_YY_sum) * K_XY_sum
+            + 2 / (m**3 * m1) * (Kt_XX_sum + Kt_YY_sum) * K_XY_sum
         )
         zeta2_est = (
             1 / (m * m1) * (Kt_XX_2_sum + Kt_YY_2_sum)
-            - 1 / (m * m1) ** 2 * (Kt_XX_sum ** 2 + Kt_YY_sum ** 2)
+            - 1 / (m * m1) ** 2 * (Kt_XX_sum**2 + Kt_YY_sum**2)
             + 2 / (m * m) * K_XY_2_sum
-            - 2 / m ** 4 * K_XY_sum ** 2
+            - 2 / m**4 * K_XY_sum**2
             - 4 / (m * m * m1) * (dot_XX_XY + dot_YY_YX)
-            + 4 / (m ** 3 * m1) * (Kt_XX_sum + Kt_YY_sum) * K_XY_sum
+            + 4 / (m**3 * m1) * (Kt_XX_sum + Kt_YY_sum) * K_XY_sum
         )
-        var_est = (4 * (var_at_m - 2) / (var_at_m * (var_at_m - 1)) * zeta1_est
-                + 2 / (var_at_m * (var_at_m - 1)) * zeta2_est)
+        var_est = (
+            4 * (var_at_m - 2) / (var_at_m * (var_at_m - 1)) * zeta1_est
+            + 2 / (var_at_m * (var_at_m - 1)) * zeta2_est
+        )
 
         return mmd2.cpu().numpy(), var_est.cpu().numpy()
-
 
     def _sqn(self, arr):
         """
@@ -235,4 +267,3 @@ class KidMetric(BaseIDMetric):
         """
         flat = arr.view(-1)
         return flat.dot(flat)
-            

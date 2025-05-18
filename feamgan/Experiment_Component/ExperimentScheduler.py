@@ -1,9 +1,10 @@
 import importlib
 import traceback
 
-from feamgan.LoggerNames import LoggerNames
-from feamgan.Logger_Component.SLoggerHandler import SLoggerHandler
 from feamgan.ConfigInput_Component.ConfigProvider import ConfigProvider
+from feamgan.Logger_Component.SLoggerHandler import SLoggerHandler
+from feamgan.LoggerNames import LoggerNames
+
 
 class ExperimentScheduler:
     """
@@ -46,39 +47,61 @@ class ExperimentScheduler:
                 self.__finished_experiments = self.__finished_experiments + 1
                 try:
                     # Dynamically import the experiment class by name.
-                    experiment_module = importlib.import_module("feamgan.Experiment_Component.Experiments." + experiment_name)
+                    experiment_module = importlib.import_module(
+                        "feamgan.Experiment_Component.Experiments." + experiment_name
+                    )
 
                     # Dynamically load the provider class by name.
                     # Combined with the above import its like: from Experiment_Component.Experiments.CsnMnistExperiment import CsnMnistExperiment
                     experiment = getattr(experiment_module, experiment_name)
 
-                    for config_name in self.__schedule["experimentConfigsToRun"][experiment_name]:
+                    for config_name in self.__schedule["experimentConfigsToRun"][
+                        experiment_name
+                    ]:
                         try:
                             config = ConfigProvider().get_config(
-                                "feamgan/Experiment_Component/ExperimentConfigs/"+config_name)
+                                "feamgan/Experiment_Component/ExperimentConfigs/"
+                                + config_name
+                            )
                             experiment(config, self.__controller_config).execute()
                             self.__successful_experiments.append(experiment_name)
                             self.__logExecutionInfo()
                         except:
                             self.__logger.error(
-                            "Cancled experiment " + experiment_name + " An error accrued:" + str(traceback.format_exc()),
-                            "ExperimentScheduler:execute")
+                                "Cancled experiment "
+                                + experiment_name
+                                + " An error accrued:"
+                                + str(traceback.format_exc()),
+                                "ExperimentScheduler:execute",
+                            )
                             self.__canceled_experiments.append(experiment_name)
                             self.__logExecutionInfo()
 
                 except:
-                    self.__logger.error("Cancled experiment " + experiment_name + " An error accrued:" + str(traceback.format_exc()), "ExperimentScheduler:execute")
+                    self.__logger.error(
+                        "Cancled experiment "
+                        + experiment_name
+                        + " An error accrued:"
+                        + str(traceback.format_exc()),
+                        "ExperimentScheduler:execute",
+                    )
                     self.__canceled_experiments.append(experiment_name)
                     self.__logExecutionInfo()
-
 
     def __logExecutionInfo(self):
         """
         Logs the execution information (for example the successful or canceled experiments) after each experiment.
         """
-        info_text = "\n************ExperimentScheduler************\n" + "Experiment " + str(
-            self.__finished_experiments) + " of " + str(
-            len(self.__schedule["experimentsToRun"])) + " finished.\nSuccessful experiments: " + str(
-            self.__successful_experiments) + "\nCancled experiments: " + str(
-            self.__canceled_experiments) + "\n*******************************************"
+        info_text = (
+            "\n************ExperimentScheduler************\n"
+            + "Experiment "
+            + str(self.__finished_experiments)
+            + " of "
+            + str(len(self.__schedule["experimentsToRun"]))
+            + " finished.\nSuccessful experiments: "
+            + str(self.__successful_experiments)
+            + "\nCancled experiments: "
+            + str(self.__canceled_experiments)
+            + "\n*******************************************"
+        )
         self.__logger.info(info_text, "ExperimentScheduler:__logExecutionInfo")

@@ -1,7 +1,8 @@
 import os
 
-from feamgan.utils.TSingleton import TSingleton
 from feamgan.Logger_Component.Logger.Logger import Logger
+from feamgan.utils.TSingleton import TSingleton
+
 
 class SLoggerHandler(metaclass=TSingleton):
     """
@@ -29,7 +30,9 @@ class SLoggerHandler(metaclass=TSingleton):
                 os.mkdir(self.__folder)
 
         self.__file = open(self.__index, "w")
-        self.__file.write("<h1 style='font-family: courier new; font-wight: bold;'>List of registered Loggers</h1>")
+        self.__file.write(
+            "<h1 style='font-family: courier new; font-wight: bold;'>List of registered Loggers</h1>"
+        )
 
     def getLogger(self, name, append=False):
         """
@@ -41,13 +44,16 @@ class SLoggerHandler(metaclass=TSingleton):
         :returns log: (Logger) The requested logger.
         """
         for log in self.__logger:
-            if (log.getName() == name):
+            if log.getName() == name:
                 break
         else:
             log = Logger(name, self.__folder, append)
             self.__logger.append(log)
             self.__file.write(
-                "<a style='font-family: courier new; font-wight: bold;' href='./" + name + "/index.html'>" + name + "</a><br>")
+                "<a style='font-family: courier new; font-wight: bold;' href='./"
+                + name
+                + "/index.html'>"
+                + name
+                + "</a><br>"
+            )
         return log
-
-

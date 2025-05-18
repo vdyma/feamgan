@@ -1,9 +1,10 @@
-import traceback
 import subprocess
+import traceback
 
-from feamgan.LoggerNames import LoggerNames
-from feamgan.Logger_Component.SLoggerHandler import SLoggerHandler
 from feamgan.Experiment_Component.ExperimentScheduler import ExperimentScheduler
+from feamgan.Logger_Component.SLoggerHandler import SLoggerHandler
+from feamgan.LoggerNames import LoggerNames
+
 
 class Controller:
     """
@@ -40,9 +41,11 @@ class Controller:
         self.__logger.info("Loading config ...", "Controller:init")
         successful = True
         try:
-            if (self.__controller_config["localRank"] == 0) and self.__controller_config["modelLogging"]["usewandb"]:
+            if (
+                self.__controller_config["localRank"] == 0
+            ) and self.__controller_config["modelLogging"]["usewandb"]:
                 api_key = self.__controller_config["modelLogging"]["wandb"]["apiKey"]
-                subprocess.check_call([f"wandb login --relogin {api_key}"], shell=True) 
+                subprocess.check_call([f"wandb login --relogin {api_key}"], shell=True)
             self.__logger.info("Finished init()", "Controller:init")
         except:
             successful = False
@@ -60,14 +63,23 @@ class Controller:
         successful = True
         if self.__controller_config["executeExperiments"]:
             try:
-                self.__logger.info("Starting executeExperiments() ...", "Controller:execute")
+                self.__logger.info(
+                    "Starting executeExperiments() ...", "Controller:execute"
+                )
                 # load schedule
-                self.__experiment_scheduler = ExperimentScheduler(self.__experiment_schedule, self.__controller_config)
+                self.__experiment_scheduler = ExperimentScheduler(
+                    self.__experiment_schedule, self.__controller_config
+                )
                 self.__experiment_scheduler.execute()
-                self.__logger.info("Finished executeExperiments()", "Controller:execute")
+                self.__logger.info(
+                    "Finished executeExperiments()", "Controller:execute"
+                )
             except:
                 successful = False
-                self.__logger.error("Canceled executeExperiments(). An error occurred!", "Controller:execute")
+                self.__logger.error(
+                    "Canceled executeExperiments(). An error occurred!",
+                    "Controller:execute",
+                )
                 print(traceback.format_exc())
 
         return successful

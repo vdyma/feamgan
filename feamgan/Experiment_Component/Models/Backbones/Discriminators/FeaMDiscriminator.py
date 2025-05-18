@@ -5,69 +5,82 @@ import torch.nn.functional as F
 from feamgan.Experiment_Component.Models.BaseNetwork import BaseNetwork
 from feamgan.Experiment_Component.Models.Normalization.utils import getNormLayer
 
+
 # Inspired by the Feature-Pyramid Semantics Embedding Discriminator from https://github.com/xh-liu/CC-FPSE
 class FeaMDiscriminator(BaseNetwork):
     def __init__(self, backbone_config, ganFeat_loss, input_nc):
         super().__init__()
         self.ganFeat_loss = ganFeat_loss
-        self.norm_D = backbone_config["normD"] 
-        nf = backbone_config["nrFirstLayerFilters"] 
+        self.norm_D = backbone_config["normD"]
+        nf = backbone_config["nrFirstLayerFilters"]
         self.input_nc = input_nc
         image_nc = 3
-        label_nc = input_nc -3 
+        label_nc = input_nc - 3
 
         norm_layer = getNormLayer(self.norm_D)
 
         # bottom-up pathway
         self.enc1 = nn.Sequential(
-                norm_layer(nn.Conv2d(image_nc, nf, kernel_size=3, stride=2, padding=1)), 
-                nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(image_nc, nf, kernel_size=3, stride=2, padding=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.enc2 = nn.Sequential(
-                norm_layer(nn.Conv2d(nf, nf*2, kernel_size=3, stride=2, padding=1)), 
-                nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf, nf * 2, kernel_size=3, stride=2, padding=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.enc3 = nn.Sequential(
-                norm_layer(nn.Conv2d(nf*2, nf*4, kernel_size=3, stride=2, padding=1)), 
-                nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf * 2, nf * 4, kernel_size=3, stride=2, padding=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.enc4 = nn.Sequential(
-                norm_layer(nn.Conv2d(nf*4, nf*8, kernel_size=3, stride=2, padding=1)), 
-                nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf * 4, nf * 8, kernel_size=3, stride=2, padding=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.enc5 = nn.Sequential(
-                norm_layer(nn.Conv2d(nf*8, nf*8, kernel_size=3, stride=2, padding=1)), 
-                nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf * 8, nf * 8, kernel_size=3, stride=2, padding=1)),
+            nn.LeakyReLU(0.2, True),
+        )
 
         # top-down pathway
         self.lat2 = nn.Sequential(
-                    norm_layer(nn.Conv2d(nf*2, nf*4, kernel_size=1)), 
-                    nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf * 2, nf * 4, kernel_size=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.lat3 = nn.Sequential(
-                    norm_layer(nn.Conv2d(nf*4, nf*4, kernel_size=1)), 
-                    nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf * 4, nf * 4, kernel_size=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.lat4 = nn.Sequential(
-                    norm_layer(nn.Conv2d(nf*8, nf*4, kernel_size=1)), 
-                    nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf * 8, nf * 4, kernel_size=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.lat5 = nn.Sequential(
-                    norm_layer(nn.Conv2d(nf*8, nf*4, kernel_size=1)), 
-                    nn.LeakyReLU(0.2, True))
-                
+            norm_layer(nn.Conv2d(nf * 8, nf * 4, kernel_size=1)),
+            nn.LeakyReLU(0.2, True),
+        )
+
         # final layers
         self.final2 = nn.Sequential(
-                    norm_layer(nn.Conv2d(nf*4, nf*2, kernel_size=3, padding=1)), 
-                    nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf * 4, nf * 2, kernel_size=3, padding=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.final3 = nn.Sequential(
-                    norm_layer(nn.Conv2d(nf*4, nf*2, kernel_size=3, padding=1)), 
-                    nn.LeakyReLU(0.2, True))
+            norm_layer(nn.Conv2d(nf * 4, nf * 2, kernel_size=3, padding=1)),
+            nn.LeakyReLU(0.2, True),
+        )
         self.final4 = nn.Sequential(
-                    norm_layer(nn.Conv2d(nf*4, nf*2, kernel_size=3, padding=1)), 
-                    nn.LeakyReLU(0.2, True))
-    
+            norm_layer(nn.Conv2d(nf * 4, nf * 2, kernel_size=3, padding=1)),
+            nn.LeakyReLU(0.2, True),
+        )
+
         # true/false prediction and semantic alignment prediction
-        self.tf = nn.Conv2d(nf*2, 1, kernel_size=1)
-        self.seg = nn.Conv2d(nf*2, nf*2, kernel_size=1)
-        self.embedding = nn.Conv2d(label_nc, nf*2, kernel_size=1)
+        self.tf = nn.Conv2d(nf * 2, 1, kernel_size=1)
+        self.seg = nn.Conv2d(nf * 2, nf * 2, kernel_size=1)
+        self.embedding = nn.Conv2d(label_nc, nf * 2, kernel_size=1)
 
     def forward(self, input):
-        segmap = input[:,0:self.input_nc-3]
-        fake_and_real_img = input[:,-3:]
+        segmap = input[:, 0 : self.input_nc - 3]
+        fake_and_real_img = input[:, -3:]
 
         # bottom-up pathway
         feat11 = self.enc1(fake_and_real_img)
@@ -78,9 +91,15 @@ class FeaMDiscriminator(BaseNetwork):
         # top-down pathway and lateral connections
         feat25 = self.lat5(feat15)
 
-        feat24 = F.interpolate(feat25, feat14.shape[2:], mode='bilinear') + self.lat4(feat14)
-        feat23 = F.interpolate(feat24, feat13.shape[2:], mode='bilinear') + self.lat3(feat13)
-        feat22 = F.interpolate(feat23, feat12.shape[2:], mode='bilinear') + self.lat2(feat12)
+        feat24 = F.interpolate(feat25, feat14.shape[2:], mode="bilinear") + self.lat4(
+            feat14
+        )
+        feat23 = F.interpolate(feat24, feat13.shape[2:], mode="bilinear") + self.lat3(
+            feat13
+        )
+        feat22 = F.interpolate(feat23, feat12.shape[2:], mode="bilinear") + self.lat2(
+            feat12
+        )
 
         # final prediction layers
         feat32 = self.final2(feat22)
@@ -99,9 +118,9 @@ class FeaMDiscriminator(BaseNetwork):
 
         # segmentation map embedding
         segemb = self.embedding(segmap)
-        segemb2 = F.interpolate(segemb, seg2.shape[2:], mode='bilinear') 
-        segemb3 = F.interpolate(segemb, seg3.shape[2:], mode='bilinear') 
-        segemb4 = F.interpolate(segemb, seg4.shape[2:], mode='bilinear') 
+        segemb2 = F.interpolate(segemb, seg2.shape[2:], mode="bilinear")
+        segemb3 = F.interpolate(segemb, seg3.shape[2:], mode="bilinear")
+        segemb4 = F.interpolate(segemb, seg4.shape[2:], mode="bilinear")
 
         # semantics embedding discriminator score
         pred2 += torch.mul(segemb2, seg2).sum(dim=1, keepdim=True)

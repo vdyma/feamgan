@@ -1,6 +1,7 @@
 import json
 
-class ConfigProvider():
+
+class ConfigProvider:
     """
     The ConfigProvider provides the interface for getting the various config files via a path specification.
     """
@@ -11,7 +12,7 @@ class ConfigProvider():
         :param path_to_config: (String) The path to the config file.
         :return: config: (Dictionary) The parsed config.
         """
-        if path_to_config.endswith('.json'):
+        if path_to_config.endswith(".json"):
             return self.parse_json_config(path_to_config)
         else:
             return None

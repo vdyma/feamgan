@@ -1,12 +1,15 @@
 import traceback
-import wandb
+
 import torch
 
-from feamgan.LoggerNames import LoggerNames
-from feamgan.Logger_Component.SLoggerHandler import SLoggerHandler
+from feamgan.Experiment_Component.Experiments.experimentFunctions import (
+    trainValInferModel,
+)
 from feamgan.Experiment_Component.IExperiment import IExperiment
-from feamgan.Experiment_Component.Experiments.experimentFunctions import trainValInferModel
+from feamgan.Logger_Component.SLoggerHandler import SLoggerHandler
+from feamgan.LoggerNames import LoggerNames
 from feamgan.utils import distUtils
+
 
 class TrainModelsExperiment(IExperiment):
     """
@@ -23,6 +26,7 @@ class TrainModelsExperiment(IExperiment):
         __num_threads:  (Integer) The number of CPU threads to use.
         __wandb_config: (Dictionary) The wandb config: inclues e.g. the wandb project to log training stuff.
     """
+
     def __init__(self, config, controller_config):
         """
         Constructor, initialize member variables.
@@ -38,7 +42,7 @@ class TrainModelsExperiment(IExperiment):
         self.__num_threads = controller_config["hardware"]["numCPUCores"]
         self.__wandb_config = controller_config["modelLogging"]["wandb"]
         self.__use_wandb = controller_config["modelLogging"]["usewandb"]
-       
+
     def execute(self):
         """
         Executes the experiment with the given config.
@@ -51,50 +55,88 @@ class TrainModelsExperiment(IExperiment):
             # copy of the network in exactly the same way so that they have the same
             # weights and other parameters. The true seed will be the seed.
             distUtils.setRandomSeed(self.__seed, by_rank=False)
-            distUtils.initCudnn(bool(model_config["cudnn"]["deterministic"]), bool(model_config["cudnn"]["benchmark"]))
-            
+            distUtils.initCudnn(
+                bool(model_config["cudnn"]["deterministic"]),
+                bool(model_config["cudnn"]["benchmark"]),
+            )
+
             world_size = 1
             if self.__distributed:
                 distUtils.initDist(self.__local_rank)
                 if self.__local_rank == 0:
-                    print('__CUDA Initialized:', torch.cuda.is_initialized())
-                world_size = torch.distributed.get_world_size() # For a single machine world_size == num_gpus
-            assert torch.backends.cudnn.enabled, "Amp requires cudnn backend to be enabled."
+                    print("__CUDA Initialized:", torch.cuda.is_initialized())
+                world_size = (
+                    torch.distributed.get_world_size()
+                )  # For a single machine world_size == num_gpus
+            assert torch.backends.cudnn.enabled, (
+                "Amp requires cudnn backend to be enabled."
+            )
 
             model_name = model_config["modelName"]
             if (self.__local_rank == 0) and self.__use_wandb:
-                wandb.init(entity=self.__wandb_config["entity"], name=model_config["modelName"], 
-                        allow_val_change=True, project=self.__wandb_config["project"], 
-                        force=self.__wandb_config["forceLogin"], resume=False, 
-                        config=model_config, save_code=True)
-                wandb.watch_called = False 
+                import wandb
+
+                wandb.init(
+                    entity=self.__wandb_config["entity"],
+                    name=model_config["modelName"],
+                    allow_val_change=True,
+                    project=self.__wandb_config["project"],
+                    force=self.__wandb_config["forceLogin"],
+                    resume=False,
+                    config=model_config,
+                    save_code=True,
+                )
+                wandb.watch_called = False
 
             try:
                 for dataset_config in self.__config["datasetConfigs"]:
-
                     # Only train the model if a batch size for the dataset is given
-                    if not dataset_config["nameOfDataset"] in model_config["batchSizes"].keys():
+                    if (
+                        not dataset_config["nameOfDataset"]
+                        in model_config["batchSizes"].keys()
+                    ):
                         continue
 
                     # and for each xFold iteration
                     for repeat_training_step in model_config["repeatTrainingSteps"]:
-
-                        # If the dataset contains different sizes we want to test, we save them in seperat directories 
-                        dataset_dir_name = dataset_config["nameOfDataset"]       
+                        # If the dataset contains different sizes we want to test, we save them in seperat directories
+                        dataset_dir_name = dataset_config["nameOfDataset"]
                         if "trainDatasetSize" in dataset_config.keys():
-                            dataset_dir_name = dataset_dir_name + "_" + str(dataset_config["trainDatasetSize"])
+                            dataset_dir_name = (
+                                dataset_dir_name
+                                + "_"
+                                + str(dataset_config["trainDatasetSize"])
+                            )
 
                         # Construct the model Name
-                        model_dir = "/" + model_name + "/" + dataset_dir_name + "/repeatTrainingStep_" + str(repeat_training_step)
+                        model_dir = (
+                            "/"
+                            + model_name
+                            + "/"
+                            + dataset_dir_name
+                            + "/repeatTrainingStep_"
+                            + str(repeat_training_step)
+                        )
 
                         # Train the model
-                        self.__logger.info("Starting to train: " + model_dir, "TrainModelsExperiment:execute")
-                        trainValInferModel(model_config, model_dir, dataset_config, self.__local_rank, world_size, self.__num_threads, self.__seed, self.__use_wandb)
-                        self.__logger.info("Finished to train: " + model_dir, "TrainModelsExperiment:execute")
-                           
+                        self.__logger.info(
+                            "Starting to train: " + model_dir,
+                            "TrainModelsExperiment:execute",
+                        )
+                        trainValInferModel(
+                            model_config,
+                            model_dir,
+                            dataset_config,
+                            self.__local_rank,
+                            world_size,
+                            self.__num_threads,
+                            self.__seed,
+                            self.__use_wandb,
+                        )
+                        self.__logger.info(
+                            "Finished to train: " + model_dir,
+                            "TrainModelsExperiment:execute",
+                        )
+
             except:
                 print(traceback.format_exc())
-
-
-
-

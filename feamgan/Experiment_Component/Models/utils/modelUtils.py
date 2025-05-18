@@ -1,5 +1,5 @@
-
 import torch.nn as nn
+
 
 class WrappedModel(nn.Module):
     """
@@ -20,13 +20,13 @@ def printNetwork(net):
     for param in net.parameters():
         num_params += param.numel()
     print(net)
-    print('Total number of parameters: %d' % num_params)
+    print("Total number of parameters: %d" % num_params)
 
 
 def applyImagenetNormalization(input):
     """
     Normalize using ImageNet mean and std.
-    
+
     :param input (4D tensor NxCxHxW): The input images, assuming to be [-1, 1].
     :return: Normalized inputs using the ImageNet normalization.
     """
